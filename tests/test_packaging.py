@@ -136,6 +136,7 @@ def test_module_level_imports_are_all_declared(pyproject_text):
         "mimetypes",
         "dataclasses",
         "typing",
+        "importlib",
         "__future__",
     }
     declared = {_requirement_name(item) for item in _toml_array(pyproject_text, "dependencies")}
