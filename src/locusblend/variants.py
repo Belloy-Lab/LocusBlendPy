@@ -372,6 +372,9 @@ def run_plink_clump_for_auto_indices(
             "--from-bp", str(int(start_bp)),
             "--to-bp", str(int(end_bp)),
             "--extract", extract_in,
+            # Candidate variants and the positional window are both intentional
+            # inclusion filters, so PLINK must take their intersection.
+            "--force-intersect",
             "--clump", clump_in,
             "--clump-snp-field", "SNP",
             "--clump-field", "P",

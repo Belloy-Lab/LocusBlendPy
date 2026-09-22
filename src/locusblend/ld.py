@@ -308,6 +308,9 @@ def compute_ld_maps_with_plink(
                 "--from-bp", str(int(start)),
                 "--to-bp", str(int(end)),
                 "--extract", extract_path,
+                # The locus window and the extracted SNP set are both intentional
+                # inclusion filters, so PLINK must take their intersection.
+                "--force-intersect",
                 "--ld-snp", str(index_snp),
                 "--r2",
                 "--ld-window", "999999",
