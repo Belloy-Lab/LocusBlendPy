@@ -311,6 +311,8 @@ def compute_ld_maps_with_plink(
                 # The locus window and the extracted SNP set are both intentional
                 # inclusion filters, so PLINK must take their intersection.
                 "--force-intersect",
+                # Duplicate variant IDs in the reference BIM: keep the first record.
+                "--rm-dup", "force-first",
                 "--ld-snp", str(index_snp),
                 "--r2",
                 "--ld-window", "999999",

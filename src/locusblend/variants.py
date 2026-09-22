@@ -375,6 +375,8 @@ def run_plink_clump_for_auto_indices(
             # Candidate variants and the positional window are both intentional
             # inclusion filters, so PLINK must take their intersection.
             "--force-intersect",
+            # Duplicate variant IDs in the reference BIM: keep the first record.
+            "--rm-dup", "force-first",
             "--clump", clump_in,
             "--clump-snp-field", "SNP",
             "--clump-field", "P",

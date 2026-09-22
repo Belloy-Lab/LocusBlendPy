@@ -53,6 +53,8 @@ def test_ld_command_includes_force_intersect(tmp_path, monkeypatch):
     assert "--extract" in cmd
     assert "--from-bp" in cmd and "--to-bp" in cmd
     assert "--force-intersect" in cmd
+    assert "--rm-dup" in cmd
+    assert cmd[cmd.index("--rm-dup") + 1] == "force-first"
     # existing LD arguments are unchanged
     assert cmd[cmd.index("--from-bp") + 1] == "73000000"
     assert cmd[cmd.index("--to-bp") + 1] == "73500000"

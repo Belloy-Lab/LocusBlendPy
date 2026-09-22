@@ -62,6 +62,8 @@ def test_clump_command_intersects_candidates_with_locus_window(tmp_path, monkeyp
     assert "--extract" in cmd
     assert "--from-bp" in cmd and "--to-bp" in cmd
     assert "--force-intersect" in cmd
+    assert "--rm-dup" in cmd
+    assert cmd[cmd.index("--rm-dup") + 1] == "force-first"
     assert cmd[cmd.index("--from-bp") + 1] == "73000000"
     assert cmd[cmd.index("--to-bp") + 1] == "73500000"
     # thresholds and the returned selection are unchanged
