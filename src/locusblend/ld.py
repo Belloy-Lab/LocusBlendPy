@@ -1,8 +1,8 @@
 """LD reference handling: PLINK bfiles, PLINK LD, and uploaded LD tables.
 
-Utilities for PLINK discovery, PLINK bfile handling, BIM loading, PLINK ``--r2``
-LD calculation, uploaded LD long-table/matrix parsing, uploaded-LD key
-matching, and LD map/annotation construction.
+Utilities for PLINK discovery, PLINK bfile handling, BIM loading, PLINK
+``--r2-unphased`` LD calculation, uploaded LD long-table/matrix parsing,
+uploaded-LD key matching, and LD map/annotation construction.
 
 PLINK is not bundled: the executable comes from an explicit path, the
 ``LOCUSBLEND_PLINK`` environment variable, or the system ``PATH``. Bfile
@@ -227,20 +227,29 @@ def load_reference_bim(bfile_prefix, search_dirs=None):
 
 
 def _read_plink_ld_table(ld_path, index_snp):
+    """Return ``{other_snp: r2}`` for ``index_snp`` from a PLINK LD report.
+
+    PLINK 2 writes ``.vcor`` with ID_A/ID_B/UNPHASED_R2; legacy PLINK 1.x
+    wrote ``.ld`` with SNP_A/SNP_B/R2. Since ``--ld-snp`` fixes the A
+    variant to the index SNP, ID_B/SNP_B is the target variant.
+    """
     if not os.path.exists(ld_path):
         return {}
 
     ld = pd.read_csv(ld_path, sep=r"\s+")
-    if ld.empty or "SNP_A" not in ld.columns or "SNP_B" not in ld.columns or "R2" not in ld.columns:
+    a_col = next((c for c in ("ID_A", "SNP_A") if c in ld.columns), None)
+    b_col = next((c for c in ("ID_B", "SNP_B") if c in ld.columns), None)
+    r2_col = next((c for c in ("UNPHASED_R2", "R2") if c in ld.columns), None)
+    if ld.empty or a_col is None or b_col is None or r2_col is None:
         return {}
 
-    ld = ld.copy()
-    ld["SNP_A"] = ld["SNP_A"].astype(str)
-    ld["SNP_B"] = ld["SNP_B"].astype(str)
-    ld["R2"] = pd.to_numeric(ld["R2"], errors="coerce")
+    ld = ld[[a_col, b_col, r2_col]].copy()
+    ld[a_col] = ld[a_col].astype(str).str.strip()
+    ld[b_col] = ld[b_col].astype(str).str.strip()
+    ld[r2_col] = pd.to_numeric(ld[r2_col], errors="coerce")
 
-    sub = ld[ld["SNP_A"] == str(index_snp)][["SNP_B", "R2"]].dropna()
-    out = dict(zip(sub["SNP_B"], sub["R2"]))
+    sub = ld[(ld[a_col] == str(index_snp)) & ld[b_col].ne("") & ld[r2_col].notna()]
+    out = dict(zip(sub[b_col], sub[r2_col]))
     out[str(index_snp)] = 1.0
     return out
 
@@ -314,7 +323,9 @@ def compute_ld_maps_with_plink(
                 # Duplicate variant IDs in the reference BIM: keep the first record.
                 "--rm-dup", "force-first",
                 "--ld-snp", str(index_snp),
-                "--r2",
+                # PLINK 2's unphased r^2 report (writes <out>.vcor).
+                "--r2-unphased",
+                "cols=chrom,pos,id,ref,alt",
                 "--ld-window", "999999",
                 "--ld-window-kb", str(kb_span),
                 "--ld-window-r2", "0",
@@ -334,7 +345,11 @@ def compute_ld_maps_with_plink(
                 log(f"PLINK failed for {index_snp}:\n{res.stdout}")
                 continue
 
-            ld_maps[r2_col] = _read_plink_ld_table(out_prefix + ".ld", index_snp)
+            # PLINK 2 writes <out>.vcor; legacy PLINK 1.x wrote <out>.ld.
+            for ld_path in (out_prefix + ".vcor", out_prefix + ".ld"):
+                if os.path.exists(ld_path):
+                    ld_maps[r2_col] = _read_plink_ld_table(ld_path, index_snp)
+                    break
 
     return ld_maps, index_status, tuple(sorted(ref_snps))
 
