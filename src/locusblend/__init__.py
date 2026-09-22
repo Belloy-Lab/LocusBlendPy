@@ -13,6 +13,8 @@ them with ``reference_dir=...`` or ``LOCUSBLEND_REFERENCE_DIR``. The package is
 UI-agnostic. The public API is still stabilizing.
 """
 
+from importlib.metadata import PackageNotFoundError, version
+
 from . import (
     api,
     colors,
@@ -38,7 +40,14 @@ from .reference import (
     reference_status,
 )
 
-__version__ = "0.1.0.dev0"
+# pyproject.toml is the single source of truth for the release version; it is
+# read back from the installed distribution metadata instead of being
+# duplicated here. "0+unknown" only appears in a source tree that is not
+# installed as a distribution.
+try:
+    __version__ = version("locusblend")
+except PackageNotFoundError:  # pragma: no cover - uninstalled source checkout
+    __version__ = "0+unknown"
 
 __all__ = [
     "IndexVariant",

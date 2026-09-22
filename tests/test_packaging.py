@@ -28,6 +28,13 @@ def _toml_array(text, key):
     return re.findall(r'"([^"]+)"', match.group(1))
 
 
+def _declared_version(pyproject_text):
+    """Return the version declared in pyproject.toml."""
+    match = re.search(r'^version = "([^"]+)"', pyproject_text, flags=re.M)
+    assert match, "version not found in pyproject.toml"
+    return match.group(1)
+
+
 def _requirement_name(requirement):
     return re.split(r"[<>=!~;\[ ]", requirement.strip(), maxsplit=1)[0]
 
@@ -55,7 +62,9 @@ def pyproject_text():
 # ----------------------------------------------------------------------
 def test_pyproject_name_version_and_python(pyproject_text):
     assert 'name = "locusblend"' in pyproject_text
-    assert 'version = "0.1.0.dev0"' in pyproject_text
+    # release version for this milestone; it is written only here, never in the
+    # package source (see test_version_is_not_hard_coded_in_package_source)
+    assert 'version = "0.1.0"' in pyproject_text
     assert 'requires-python = ">=3.9"' in pyproject_text
     assert 'readme = "README.md"' in pyproject_text
     # src/ layout
@@ -64,8 +73,27 @@ def test_pyproject_name_version_and_python(pyproject_text):
 
 
 def test_declared_version_matches_package(pyproject_text):
-    declared = re.search(r'^version = "([^"]+)"', pyproject_text, flags=re.M).group(1)
-    assert declared == locusblend.__version__ == "0.1.0.dev0"
+    """pyproject.toml is the single source of truth; __version__ reads metadata."""
+    declared = _declared_version(pyproject_text)
+    try:
+        installed = metadata.version("locusblend")
+    except metadata.PackageNotFoundError:
+        pytest.skip("locusblend is not installed in this environment")
+
+    assert installed == declared, (
+        f"the installed locusblend distribution reports version {installed!r} "
+        f"while this checkout declares {declared!r} in pyproject.toml; install "
+        "this checkout (python -m pip install -e .) before running the tests"
+    )
+    assert locusblend.__version__ == installed
+
+
+def test_version_is_not_hard_coded_in_package_source(pyproject_text):
+    """Guard: the release version must not be duplicated in the source tree."""
+    declared = _declared_version(pyproject_text)
+    init_source = (PACKAGE_DIR / "__init__.py").read_text(encoding="utf-8")
+    assert "importlib.metadata" in init_source
+    assert f'__version__ = "{declared}"' not in init_source
 
 
 def test_runtime_dependencies_are_complete_and_minimal(pyproject_text):
@@ -138,7 +166,9 @@ def test_installed_metadata_matches_pyproject():
     except metadata.PackageNotFoundError:
         pytest.skip("locusblend is not installed in this environment")
 
-    assert dist_version == "0.1.0.dev0"
+    assert dist_version == _declared_version(
+        PYPROJECT.read_text(encoding="utf-8")
+    )
     requires = metadata.requires("locusblend") or []
     core = [r for r in requires if "extra ==" not in r]
     core_names = {_requirement_name(r).lower() for r in core}

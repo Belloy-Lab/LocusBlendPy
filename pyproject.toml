@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "locusblend"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "Regional visualization of GWAS and QTL signals with multi-index LD coloring"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -19,7 +19,7 @@ authors = [
 ]
 keywords = ["gwas", "locus-zoom", "linkage-disequilibrium", "visualization"]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering :: Bio-Informatics",

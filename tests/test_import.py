@@ -30,7 +30,10 @@ HARD_CODED_PATH_PATTERNS = (
 def test_import_locusblend():
     import locusblend
 
-    assert locusblend.__version__ == "0.1.0.dev0"
+    # __version__ comes from the installed distribution metadata (pyproject.toml
+    # is the single source of truth), so only its presence is asserted here.
+    assert isinstance(locusblend.__version__, str)
+    assert locusblend.__version__
     assert callable(locusblend.plot)
     assert callable(locusblend.reference_status)
 
