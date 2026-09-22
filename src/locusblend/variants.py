@@ -396,20 +396,31 @@ def run_plink_clump_for_auto_indices(
             text=True,
         )
 
-        clumped_path = out_prefix + ".clumped"
+        # PLINK 2 writes <out>.clumps, with the index variant in the ID
+        # column; legacy PLINK 1.x wrote <out>.clumped with a SNP column.
+        result_path = None
+        for candidate_path in (out_prefix + ".clumps", out_prefix + ".clumped"):
+            if os.path.exists(candidate_path):
+                result_path = candidate_path
+                break
+
         if res.returncode != 0:
             log(f"PLINK clump failed:\n{res.stdout}")
-            if not os.path.exists(clumped_path):
+            if result_path is None:
                 raise ValueError(f"PLINK clumping failed. Output:\n{res.stdout}")
 
-        if not os.path.exists(clumped_path):
-            raise ValueError("PLINK clumping produced no .clumped output.")
+        if result_path is None:
+            raise ValueError("PLINK clumping produced no .clumps output.")
 
-        clumped = pd.read_csv(clumped_path, sep=r"\s+")
-        if clumped.empty or "SNP" not in clumped.columns:
+        clumped = pd.read_csv(result_path, sep=r"\s+")
+        lead_col = next(
+            (col for col in ("ID", "#ID", "SNP") if col in clumped.columns),
+            None,
+        )
+        if clumped.empty or lead_col is None:
             raise ValueError("PLINK clumping produced an empty result — no independent lead SNPs found.")
 
-        lead_snps = clumped["SNP"].astype(str).str.strip().head(max_indices).tolist()
+        lead_snps = clumped[lead_col].astype(str).str.strip().head(max_indices).tolist()
 
     # Map back to candidate metadata
     selected_rows = []

@@ -37,9 +37,10 @@ def test_clump_command_intersects_candidates_with_locus_window(tmp_path, monkeyp
     def fake_run(cmd, **kwargs):
         recorded["cmd"] = list(cmd)
         out_prefix = cmd[cmd.index("--out") + 1]
-        Path(out_prefix + ".clumped").write_text(
-            "CHR F SNP BP P TOTAL NSIG S05 S01 S001 S0001 SP2\n"
-            "14 rsone007 rsone007 73238768 1e-12 1 1 1 1 1 1 0.9\n",
+        # Real PLINK 2 writes <out>.clumps with the index variant in ID.
+        Path(out_prefix + ".clumps").write_text(
+            "#CHROM POS ID REF ALT F P TOTAL NSIG S05 S01 S001 S0001 SP2\n"
+            "14 73238768 rsone007 A G 0.2 1e-12 1 1 1 1 1 1 0.9\n",
             encoding="utf-8",
         )
         return subprocess.CompletedProcess(cmd, 0, stdout="")
@@ -69,3 +70,52 @@ def test_clump_command_intersects_candidates_with_locus_window(tmp_path, monkeyp
     # thresholds and the returned selection are unchanged
     assert cmd[cmd.index("--clump-r2") + 1] == "0.01"
     assert selected["REF_SNP"].tolist() == ["rsone007"]
+    # the parsed index variant is mapped back onto the candidate table
+    assert selected["DISPLAY_ID"].tolist() == ["rsone007"]
+    assert selected["BP"].tolist() == [73_238_768]
+    assert selected["rank"].tolist() == [1]
+
+
+def test_clump_handles_legacy_plink1_clumped_output(tmp_path, monkeypatch):
+    """Legacy PLINK 1.x <out>.clumped / SNP output is still accepted."""
+    prefix = tmp_path / "1000g_EUR_ch14"
+    _write_fake_bfile(prefix)
+
+    plink_exec = tmp_path / "plink"
+    plink_exec.write_text("", encoding="utf-8")
+
+    candidates = pd.DataFrame(
+        {
+            "REF_SNP": ["rsone007", "rsone008"],
+            "DISPLAY_ID": ["display007", "display008"],
+            "CHR": ["14", "14"],
+            "BP": [73_238_768, 73_239_000],
+            "P": [1e-12, 1e-8],
+        }
+    )
+
+    def fake_run(cmd, **kwargs):
+        out_prefix = cmd[cmd.index("--out") + 1]
+        Path(out_prefix + ".clumped").write_text(
+            "CHR F SNP BP P TOTAL NSIG S05 S01 S001 S0001 SP2\n"
+            "14 0.2 rsone008 73239000 1e-8 1 1 1 1 1 1 0.9\n",
+            encoding="utf-8",
+        )
+        return subprocess.CompletedProcess(cmd, 0, stdout="")
+
+    monkeypatch.setattr(variants.subprocess, "run", fake_run)
+
+    selected = variants.run_plink_clump_for_auto_indices(
+        candidates=candidates,
+        bfile_prefix=str(prefix),
+        selected_chrom="14",
+        start_bp=73_000_000,
+        end_bp=73_500_000,
+        max_indices=1,
+        clump_r2=0.01,
+        plink_path=str(plink_exec),
+    )
+
+    assert selected["REF_SNP"].tolist() == ["rsone008"]
+    assert selected["DISPLAY_ID"].tolist() == ["display008"]
+    assert selected["BP"].tolist() == [73_239_000]
