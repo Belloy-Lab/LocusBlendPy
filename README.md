@@ -10,14 +10,42 @@ If you prefer a graphical interface, use the LocusBlend web application:
 
 ## Installation
 
-Install LocusBlend from GitHub:
+Python 3.9 or newer is required.
+
+### Basic installation
 
 ```bash
-pip install git+https://github.com/Belloy-Lab/LocusBlendPy.git
+python -m pip install "locusblend @ git+https://github.com/Belloy-Lab/LocusBlendPy.git"
 ```
 
-Python 3.9 or newer is required. LD calculation needs a local PLINK executable
-and a local 1000 Genomes reference panel; see [Reference data](#reference-data).
+This is sufficient for normal Python use: `plot()` returns interactive Plotly
+figures that you can inspect in a notebook or save as HTML. No Kaleido or
+Chrome is needed for them.
+
+### Installation with static image export
+
+To export static PNG/PDF/SVG figures, install the `export` extra:
+
+```bash
+python -m pip install "locusblend[export] @ git+https://github.com/Belloy-Lab/LocusBlendPy.git"
+```
+
+The `export` extra installs the dependencies needed for static image export
+(Kaleido and Pillow).
+
+Kaleido v1+ requires Chrome or Chromium. If Chrome/Chromium is not already
+available, install a Kaleido-compatible Chrome with:
+
+```bash
+kaleido_get_chrome
+```
+
+Interactive Plotly figures / HTML output need neither the `export` extra nor
+Chrome; only static PNG/PDF/SVG export does.
+
+LD calculation requires a local PLINK 2 executable and an ancestry-matched
+1000 Genomes GRCh38 reference panel; see [Reference data](#reference-data).
+LocusBlend has been tested with PLINK v2.0.0-a.7LM (6 Aug 2025).
 
 ## Quick start
 
@@ -69,7 +97,7 @@ LD calculation requires a local, ancestry-matched 1000 Genomes GRCh38 reference
 panel. Supported ancestries: **AFR**, **AMR**, **EAS**, **EUR**, **SAS**.
 
 Supply the reference directory with `reference_dir=...`. The reference data
-guide covers downloading 1000 Genomes data, preparing PLINK binary files, and
+guide covers downloading 1000 Genomes data, preparing PLINK 2 binary files, and
 rsID handling: [docs/reference_data.md](docs/reference_data.md).
 
 ## Plot modes
@@ -98,8 +126,11 @@ figures:
   variants.
 
 Both are standard Plotly figures, so you can display them interactively or
-export them. Pass `output="figure.png"` to `plot()` to also write the combined
-locus figure to a PNG file.
+export them. Interactive figures and HTML output work with the basic
+installation; static PNG/PDF/SVG export needs the optional `[export]`
+dependencies, and Kaleido v1+ requires Chrome or Chromium — see
+[Installation](#installation). Pass `output="figure.png"` to `plot()` to also
+write the combined locus figure to a PNG file.
 
 ## Citation
 
